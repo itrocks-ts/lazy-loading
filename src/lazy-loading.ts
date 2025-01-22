@@ -92,22 +92,25 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 	return properties.length ? BuiltClass : undefined
 }
 
-const Module = require('module')
-const superRequire: (...args: any) => typeof Module = Module.prototype.require
-
-Module.prototype.require = function()
+export function initLazyLoading()
 {
-	const original = superRequire.call(this, ...arguments)
-	let module: Record<string, any> | undefined
-	for (const [name, type] of Object.entries(original)) {
-		if (!isAnyType(type)) continue
-		const withORM = initClass(type)
-		if (!withORM) continue
-		if (!module) {
-			module = { ...original }
+	const Module = require('module')
+	const superRequire: (...args: any) => typeof Module = Module.prototype.require
+
+	Module.prototype.require = function()
+	{
+		const original = superRequire.call(this, ...arguments)
+		let module: Record<string, any> | undefined
+		for (const [name, type] of Object.entries(original)) {
+			if (!isAnyType(type)) continue
+			const withORM = initClass(type)
+			if (!withORM) continue
+			if (!module) {
+				module = { ...original }
+			}
+			// @ts-ignore TS18048 but module is always initialized
+			module[name] = withORM
 		}
-		// @ts-ignore TS18048 but module is always initialized
-		module[name] = withORM
+		return module ?? original
 	}
-	return module ?? original
 }
