@@ -10,7 +10,7 @@
 		"@itrocks/storage": "latest",
 		"@itrocks/store": "latest"
 	},
-	"description": "",
+	"description": "Integrates lazy loading for objects and collections in TypeScript classes",
 	"devDependencies": {
 		"@types/node": "^22.10",
 		"typescript": "^5.6"
@@ -32,7 +32,15 @@
 	"homepage": "https://it.rocks",
 	"keywords": [
 		"backend",
-		"it.rocks"
+		"collection",
+		"it.rocks",
+		"lazy",
+		"lazy-loading",
+		"loading",
+		"object",
+		"orm",
+		"reflect",
+		"reflection"
 	],
 	"license": "ISC",
 	"name": "@itrocks/lazy-loading",
@@ -46,5 +54,5 @@
 		"build:esm": "tsc -p tsconfig.esm.json && node esm/esm"
 	},
 	"types": "./esm/lazy-loading.d.ts",
-	"version": "0.0.2"
+	"version": "0.0.3"
 }
