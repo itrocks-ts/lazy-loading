@@ -100,14 +100,24 @@ export function initLazyLoading()
 	Module.prototype.require = function()
 	{
 		const original = superRequire.call(this, ...arguments)
-		let module: Record<string, any> | undefined
+		let module:       Record<string, any> | undefined
+		let replacements: Map<Type, Type> | undefined
 		for (const [name, type] of Object.entries(original)) {
 			if (!isAnyType(type)) continue
+			if (module && replacements) {
+				const replacement = replacements.get(type)
+				if (replacement) {
+					module[name] = replacement
+					continue
+				}
+			}
 			const withORM = initClass(type)
 			if (!withORM) continue
-			if (!module) {
-				module = { ...original }
+			if (!replacements) {
+				module       = { ...original }
+				replacements = new Map()
 			}
+			replacements.set(type, withORM)
 			// @ts-ignore TS18048 but module is always initialized
 			module[name] = withORM
 		}
