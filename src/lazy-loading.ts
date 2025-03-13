@@ -27,7 +27,7 @@ function defineCollectionProperty<T extends object>(type: CollectionType<T>, pro
 		set(value) {
 			delete this[property + '_ids']
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
-			Reflect.deleteMetadata(PROTECT_GET, builtClass.prototype, property)
+			Reflect.defineMetadata(PROTECT_GET, false, this, property)
 		}
 
 	}
@@ -50,7 +50,7 @@ function defineObjectProperty<T extends object>(type: Type, property: KeyOf<T>, 
 		set(value) {
 			delete this[property + '_id']
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
-			Reflect.deleteMetadata(PROTECT_GET, builtClass.prototype, property)
+			Reflect.defineMetadata(PROTECT_GET, false, this, property)
 		}
 
 	}
@@ -69,10 +69,16 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 	// @ts-ignore TS2415 classType is always a heritable class, not a function.
 	const BuiltClass: Type<T> = (() => class extends classType {
 		[property: string]: any
-		constructor(...args: any) {
+		constructor(...args: any[]) {
 			super(...args)
 			for (const property of properties) {
-				delete this[property]
+				const value = Object.getOwnPropertyDescriptor(this, property)?.value
+				if ((value === undefined) || (Array.isArray(value) && !value.length)) {
+					delete this[property]
+				}
+				else {
+					Reflect.defineMetadata(PROTECT_GET, false, this, property)
+				}
 			}
 		}
 	})()
