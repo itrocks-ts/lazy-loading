@@ -2,7 +2,6 @@ import { isAnyType }       from '@itrocks/class-type'
 import { KeyOf, Type }     from '@itrocks/class-type'
 import { CollectionType }  from '@itrocks/property-type'
 import { ReflectClass }    from '@itrocks/reflect'
-import { ReflectProperty } from '@itrocks/reflect'
 import { dataSource }      from '@itrocks/storage'
 import { storeOf }         from '@itrocks/store'
 
@@ -83,7 +82,7 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 		}
 	})()
 
-	for (const property of Object.values(new ReflectClass(classType).properties) as ReflectProperty<T>[]) {
+	for (const property of new ReflectClass(classType).properties) {
 		const type = property.type
 		if (!type) continue
 
