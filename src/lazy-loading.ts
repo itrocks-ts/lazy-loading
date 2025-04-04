@@ -17,14 +17,14 @@ function defineCollectionProperty<T extends object>(type: CollectionType<T>, pro
 
 		async get() {
 			const elementType = type.elementType as Type
-			const ids         = this[property + '_ids']
+			const ids         = this[property + 'Ids']
 			return this[property] = ids
 				? await dataSource().readMultiple(elementType, ids)
 				: await dataSource().readCollection(this, property, elementType)
 		},
 
 		set(value) {
-			delete this[property + '_ids']
+			delete this[property + 'Ids']
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
 			Reflect.defineMetadata(PROTECT_GET, false, this, property)
 		}
@@ -42,12 +42,12 @@ function defineObjectProperty<T extends object>(type: Type, property: KeyOf<T>, 
 		enumerable:   true,
 
 		async get() {
-			const id = this[property + '_id']
+			const id = this[property + 'Id']
 			return this[property] = id ? await dataSource().read(type, id) : undefined
 		},
 
 		set(value) {
-			delete this[property + '_id']
+			delete this[property + 'Id']
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
 			Reflect.defineMetadata(PROTECT_GET, false, this, property)
 		}
