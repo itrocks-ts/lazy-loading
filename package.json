@@ -13,7 +13,7 @@
 	"description": "Integrates lazy loading for objects and collections in TypeScript classes",
 	"devDependencies": {
 		"@types/node": "^22.10",
-		"typescript": "^5.6"
+		"typescript": "~5.8"
 	},
 	"engines": {
 		"node": ">=18"
@@ -54,5 +54,5 @@
 		"build:esm": "tsc -p tsconfig.esm.json && node esm/esm"
 	},
 	"types": "./esm/lazy-loading.d.ts",
-	"version": "0.0.8"
+	"version": "0.0.9"
 }
