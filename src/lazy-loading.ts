@@ -9,14 +9,14 @@ export const PROTECT_GET = Symbol('protectGet')
 
 export type PropertyDescriptorWithProtectGet = PropertyDescriptor & ThisType<any> & { [PROTECT_GET]?: true }
 
-function defineCollectionProperty<T extends object>(type: CollectionType<T>, property: KeyOf<T>, builtClass: Type<T>)
+function defineCollectionProperty<T extends object>(type: CollectionType, property: KeyOf<T>, builtClass: Type<T>)
 {
 	const descriptor: PropertyDescriptorWithProtectGet = {
 		configurable:  true,
 		enumerable:    true,
 
 		async get() {
-			const elementType = type.elementType as Type
+			const elementType = type.elementType.type as Type
 			const ids         = this[property + 'Ids']
 			return this[property] = ids
 				? await dataSource().readMultiple(elementType, ids)
@@ -83,14 +83,13 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 	})()
 
 	for (const property of new ReflectClass(classType).properties) {
-		const type = property.type
-		if (!type) continue
-
-		if ((type instanceof CollectionType) && isAnyType(type.elementType)) {
-			properties.push(defineCollectionProperty(type, property.name, BuiltClass))
+		const propertyType = property.type
+		if (!propertyType) continue
+		if ((propertyType instanceof CollectionType) && isAnyType(propertyType.elementType.type)) {
+			properties.push(defineCollectionProperty(propertyType, property.name, BuiltClass))
 		}
-		else if (isAnyType(type)) {
-			properties.push(defineObjectProperty(type, property.name, BuiltClass))
+		else if (isAnyType(propertyType?.type)) {
+			properties.push(defineObjectProperty(propertyType.type, property.name, BuiltClass))
 		}
 	}
 
