@@ -1,7 +1,10 @@
 import { isAnyType }       from '@itrocks/class-type'
-import { KeyOf, Type }     from '@itrocks/class-type'
+import { KeyOf }           from '@itrocks/class-type'
+import { Type }            from '@itrocks/class-type'
 import { CollectionType }  from '@itrocks/property-type'
+import { DeferredType }    from '@itrocks/property-type'
 import { ReflectClass }    from '@itrocks/reflect'
+import { ReflectProperty } from '@itrocks/reflect'
 import { dataSource }      from '@itrocks/storage'
 import { storeOf }         from '@itrocks/store'
 
@@ -9,15 +12,16 @@ export const PROTECT_GET = Symbol('protectGet')
 
 export type PropertyDescriptorWithProtectGet = PropertyDescriptor & ThisType<any> & { [PROTECT_GET]?: true }
 
-function defineCollectionProperty<T extends object>(type: CollectionType, property: KeyOf<T>, builtClass: Type<T>)
+const deferredActions = new Array<() => boolean>
+
+function defineCollectionProperty<T extends object>(elementType: Type, property: KeyOf<T>, builtClass: Type<T>)
 {
 	const descriptor: PropertyDescriptorWithProtectGet = {
 		configurable:  true,
 		enumerable:    true,
 
 		async get() {
-			const elementType = type.elementType.type as Type
-			const ids         = this[property + 'Ids']
+			const ids = this[property + 'Ids']
 			return this[property] = ids
 				? await dataSource().readMultiple(elementType, ids)
 				: await dataSource().readCollection(this, property, elementType)
@@ -58,6 +62,28 @@ function defineObjectProperty<T extends object>(type: Type, property: KeyOf<T>, 
 	return property
 }
 
+function defineCollectionPropertyAction<T extends object>(
+	BuiltClass: Type<T>, properties: KeyOf<T>[], property: ReflectProperty<T>
+) {
+	const type = property.collectionType.elementType.lead
+	if (isAnyType(type)) {
+		properties.push(defineCollectionProperty(type, property.name, BuiltClass))
+		return true
+	}
+	return false
+}
+
+function defineObjectPropertyAction<T extends object>(
+	BuiltClass: Type<T>, properties: KeyOf<T>[], property: ReflectProperty<T>
+) {
+	const type = property.type.lead
+	if (isAnyType(type)) {
+		properties.push(defineObjectProperty(type, property.name, BuiltClass))
+		return true
+	}
+	return false
+}
+
 export function initClass<T extends object>(classType: Type<T>): Type<T> | undefined
 {
 	try { if (!storeOf(classType)) return }
@@ -82,18 +108,30 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 		}
 	})()
 
+	let resultingBuiltClass = undefined
+
 	for (const property of new ReflectClass(classType).properties) {
 		const propertyType = property.type
 		if (!propertyType) continue
-		if ((propertyType instanceof CollectionType) && isAnyType(propertyType.elementType.type)) {
-			properties.push(defineCollectionProperty(propertyType, property.name, BuiltClass))
+		if (propertyType instanceof CollectionType) {
+			if (defineCollectionPropertyAction(BuiltClass, properties, property)) {
+				resultingBuiltClass = BuiltClass
+			}
+			else if (propertyType.elementType.type instanceof DeferredType) {
+				resultingBuiltClass = BuiltClass
+				deferredActions.push(() => defineCollectionPropertyAction(BuiltClass, properties, property))
+			}
 		}
-		else if (isAnyType(propertyType?.type)) {
-			properties.push(defineObjectProperty(propertyType.type, property.name, BuiltClass))
+		else if (defineObjectPropertyAction(BuiltClass, properties, property)) {
+			resultingBuiltClass = BuiltClass
+		}
+		else if (propertyType?.type instanceof DeferredType) {
+			resultingBuiltClass = BuiltClass
+			deferredActions.push(() => defineObjectPropertyAction(BuiltClass, properties, property))
 		}
 	}
 
-	return properties.length ? BuiltClass : undefined
+	return resultingBuiltClass
 }
 
 export function initLazyLoading()
@@ -125,6 +163,19 @@ export function initLazyLoading()
 			// @ts-ignore TS18048 but module is always initialized
 			module[name] = withORM
 		}
+
+		if (deferredActions.length) {
+			let deferredAction
+			while (deferredAction = deferredActions[deferredActions.length - 1]) {
+				if (deferredAction()) {
+					deferredActions.pop()
+				}
+				else {
+					break
+				}
+			}
+		}
+
 		return module ?? original
 	}
 }
