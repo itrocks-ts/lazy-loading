@@ -136,13 +136,19 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 
 export function initLazyLoading()
 {
-	const Module = require('module')
+	const already = new Map<Record<string, any>, Record<string, any> | undefined>
+	const Module  = require('module')
 	const superRequire: (...args: any) => typeof Module = Module.prototype.require
 
 	Module.prototype.require = function()
 	{
 		const original = superRequire.call(this, ...arguments)
-		let module:       Record<string, any> | undefined
+		let   module   = already.get(original)
+		if (module) {
+			return module
+		}
+		already.set(original, original)
+
 		let replacements: Map<Type, Type> | undefined
 		for (const [name, type] of Object.entries(original)) {
 			if (!isAnyType(type)) continue
@@ -158,24 +164,19 @@ export function initLazyLoading()
 			if (!replacements) {
 				module       = { ...original }
 				replacements = new Map()
+				already.set(original, module)
 			}
 			replacements.set(type, withORM)
 			// @ts-ignore TS18048 but module is always initialized
 			module[name] = withORM
 		}
 
-		if (deferredActions.length) {
-			let deferredAction
-			while (deferredAction = deferredActions[deferredActions.length - 1]) {
-				if (deferredAction()) {
-					deferredActions.pop()
-				}
-				else {
-					break
-				}
-			}
+		while (deferredActions.length) {
+			if (deferredActions[deferredActions.length - 1]()) deferredActions.pop()
+			else break
 		}
 
 		return module ?? original
 	}
+
 }
