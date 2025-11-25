@@ -183,7 +183,7 @@ export function initLazyLoading()
 	function resolveDeferredModules()
 	{
 		while (deferredModules.length) {
-			const [original, module, file] = deferredModules[deferredModules.length - 1];
+			const [original, module, _file] = deferredModules[deferredModules.length - 1]
 			if (initModule(module, original) === original) {
 				Object.assign(module, original)
 			}
