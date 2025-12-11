@@ -33,6 +33,7 @@
 	"keywords": [
 		"backend",
 		"collection",
+		"entity",
 		"it.rocks",
 		"lazy",
 		"lazy-loading",
@@ -40,7 +41,8 @@
 		"object",
 		"orm",
 		"reflect",
-		"reflection"
+		"reflection",
+		"relationship"
 	],
 	"license": "ISC",
 	"name": "@itrocks/lazy-loading",
@@ -54,5 +56,5 @@
 		"build:esm": "tsc -p tsconfig.esm.json && node esm/esm"
 	},
 	"types": "./esm/lazy-loading.d.ts",
-	"version": "0.0.16"
+	"version": "0.0.17"
 }
