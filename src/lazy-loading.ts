@@ -1,6 +1,6 @@
 import { isAnyType }       from '@itrocks/class-type'
-import { KeyOf }           from '@itrocks/class-type'
 import { Type }            from '@itrocks/class-type'
+import { metadataNameOf }  from '@itrocks/decorator/property'
 import { CollectionType }  from '@itrocks/property-type'
 import { DeferredType }    from '@itrocks/property-type'
 import { ReflectClass }    from '@itrocks/reflect'
@@ -17,56 +17,62 @@ export type PropertyDescriptorWithProtectGet = PropertyDescriptor & ThisType<any
 const deferredActions = new Array<() => boolean>
 const deferredModules = new Array<[any, any, string]>
 
-function defineCollectionProperty<T extends object>(elementType: Type, property: KeyOf<T>, builtClass: Type<T>)
+function defineCollectionProperty<T extends object>(elementType: Type, property: keyof T, builtClass: Type<T>)
 {
+	const metadataName = metadataNameOf(property)
+	const propertyIds  = property.toString() + 'Ids'
+
 	const descriptor: PropertyDescriptorWithProtectGet = {
 		configurable:  true,
 		enumerable:    true,
 
 		async get() {
-			const ids = this[property + 'Ids']
+			const ids = this[propertyIds]
 			return this[property] = ids
 				? await dataSource().readMultiple(elementType, ids)
 				: await dataSource().readCollection(this, property, elementType)
 		},
 
 		set(value) {
-			delete this[property + 'Ids']
+			delete this[propertyIds]
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
-			Reflect.defineMetadata(PROTECT_GET, false, this, property)
+			Reflect.defineMetadata(PROTECT_GET, false, this, metadataName)
 		}
 
 	}
 	Object.defineProperty(builtClass.prototype, property, descriptor)
-	Reflect.defineMetadata(PROTECT_GET, true, builtClass.prototype, property)
+	Reflect.defineMetadata(PROTECT_GET, true, builtClass.prototype, metadataName)
 	return property
 }
 
-function defineObjectProperty<T extends object>(type: Type, property: KeyOf<T>, builtClass: Type<T>)
+function defineObjectProperty<T extends object>(type: Type, property: keyof T, builtClass: Type<T>)
 {
+	const metadataName = metadataNameOf(property)
+	const propertyId   = property.toString() + 'Id'
+
 	const descriptor: PropertyDescriptorWithProtectGet = {
 		configurable: true,
 		enumerable:   true,
 
 		async get() {
-			const id = this[property + 'Id']
+			const id = this[propertyId]
 			return this[property] = id ? await dataSource().read(type, id) : undefined
 		},
 
 		set(value) {
-			delete this[property + 'Id']
+			delete this[propertyId]
 			Object.defineProperty(this, property, { configurable: true, enumerable: true, value, writable: true })
-			Reflect.defineMetadata(PROTECT_GET, false, this, property)
+			Reflect.defineMetadata(PROTECT_GET, false, this, metadataName)
 		}
 
 	}
 	Object.defineProperty(builtClass.prototype, property, descriptor)
-	Reflect.defineMetadata(PROTECT_GET, true, builtClass.prototype, property)
+	Reflect.defineMetadata(PROTECT_GET, true, builtClass.prototype, metadataName)
 	return property
 }
 
 function defineCollectionPropertyAction<T extends object>(
-	BuiltClass: Type<T>, properties: KeyOf<T>[], property: ReflectProperty<T>
+	BuiltClass: Type<T>, properties: Array<keyof T>, property: ReflectProperty<T>
 ) {
 	const type = property.collectionType.elementType.lead
 	if (isAnyType(type)) {
@@ -77,7 +83,7 @@ function defineCollectionPropertyAction<T extends object>(
 }
 
 function defineObjectPropertyAction<T extends object>(
-	BuiltClass: Type<T>, properties: KeyOf<T>[], property: ReflectProperty<T>
+	BuiltClass: Type<T>, properties: Array<keyof T>, property: ReflectProperty<T>
 ) {
 	const type = property.type.lead
 	if (isAnyType(type)) {
@@ -92,24 +98,24 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 	try { if (!storeOf(classType)) return }
 	catch { return }
 
-	const properties: KeyOf<T>[] = []
+	const properties: Array<keyof T> = []
 
 	// @ts-ignore TS2415 classType is always a heritable class, not a function.
-	const BuiltClass: Type<T> = (() => class extends classType {
-		[property: string]: any
+	const BuiltClass: Type<T> = class extends classType<T> {
 		constructor(...args: any[]) {
 			super(...args)
 			for (const property of properties) {
 				const value = Object.getOwnPropertyDescriptor(this, property)?.value
 				if ((value === undefined) || (Array.isArray(value) && !value.length)) {
+					// @ts-ignore TS2536 Type 'keyof T' cannot be used to index type 'this'.
 					delete this[property]
 				}
 				else {
-					Reflect.defineMetadata(PROTECT_GET, false, this, property)
+					Reflect.defineMetadata(PROTECT_GET, false, this, metadataNameOf(property))
 				}
 			}
 		}
-	})()
+	}
 
 	let resultingBuiltClass = undefined
 
