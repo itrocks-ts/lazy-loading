@@ -101,7 +101,7 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 	const properties: Array<keyof T> = []
 
 	// @ts-ignore TS2415 classType is always a heritable class, not a function.
-	const BuiltClass: Type<T> = class extends classType<T> {
+	const BuiltClass: Type<T> = (() => class extends classType<T> {
 		constructor(...args: any[]) {
 			super(...args)
 			for (const property of properties) {
@@ -115,7 +115,7 @@ export function initClass<T extends object>(classType: Type<T>): Type<T> | undef
 				}
 			}
 		}
-	}
+	})()
 
 	let resultingBuiltClass = undefined
 
